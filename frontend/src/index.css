@@ -9,6 +9,33 @@
   :root {
     --sidebar-width: 320px;
     --header-height: 52px;
+
+    /* Theme tokens — default is dark */
+    --header-bg: #111827;
+    --header-border: rgb(255 255 255 / 0.1);
+    --header-text: #ffffff;
+    --header-muted: #9ca3af;
+    --header-hover-bg: rgb(255 255 255 / 0.08);
+    --dropdown-bg: #1f2937;
+    --dropdown-border: rgb(255 255 255 / 0.1);
+    --dropdown-hover: rgb(255 255 255 / 0.06);
+    --dropdown-text: #f9fafb;
+    --dropdown-muted: #9ca3af;
+    --dropdown-divider: rgb(255 255 255 / 0.08);
+  }
+
+  html.light {
+    --header-bg: #ffffff;
+    --header-border: #e5e7eb;
+    --header-text: #111827;
+    --header-muted: #6b7280;
+    --header-hover-bg: #f3f4f6;
+    --dropdown-bg: #ffffff;
+    --dropdown-border: #e5e7eb;
+    --dropdown-hover: #f9fafb;
+    --dropdown-text: #111827;
+    --dropdown-muted: #6b7280;
+    --dropdown-divider: #e5e7eb;
   }
 
   html, body, #root {

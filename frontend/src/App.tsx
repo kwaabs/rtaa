@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { authStore } from '@/stores/authStore'
 import { gotrue } from '@/lib/gotrue'
+import { useThemeStore, resolveTheme } from '@/stores/themeStore'
 import MapPage from '@/pages/MapPage'
 import LoginPage from '@/components/auth/LoginPage'
 import AdminLayout from '@/pages/admin/AdminLayout'
@@ -27,6 +28,26 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   const { setSession } = authStore()
+  const { theme } = useThemeStore()
+
+  // Apply theme class to <html>
+  useEffect(() => {
+    const resolved = resolveTheme(theme)
+    document.documentElement.classList.toggle('dark', resolved === 'dark')
+    document.documentElement.classList.toggle('light', resolved === 'light')
+  }, [theme])
+
+  // Re-apply when system preference changes (for 'system' mode)
+  useEffect(() => {
+    if (theme !== 'system') return
+    const mq = window.matchMedia('(prefers-color-scheme: dark)')
+    const handler = () => {
+      document.documentElement.classList.toggle('dark', mq.matches)
+      document.documentElement.classList.toggle('light', !mq.matches)
+    }
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [theme])
 
   // Bootstrap auth session and listen to GoTrue events
   useEffect(() => {
