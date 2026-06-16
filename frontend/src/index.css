@@ -10,7 +10,7 @@
     --sidebar-width: 320px;
     --header-height: 52px;
 
-    /* Theme tokens — default is dark */
+    /* ── Dark theme (default) ── */
     --header-bg: #111827;
     --header-border: rgb(255 255 255 / 0.1);
     --header-text: #ffffff;
@@ -18,12 +18,11 @@
     --header-hover-bg: rgb(255 255 255 / 0.08);
     --dropdown-bg: #1f2937;
     --dropdown-border: rgb(255 255 255 / 0.1);
-    --dropdown-hover: rgb(255 255 255 / 0.06);
     --dropdown-text: #f9fafb;
     --dropdown-muted: #9ca3af;
     --dropdown-divider: rgb(255 255 255 / 0.08);
 
-    /* Sidebar tokens — default dark */
+    /* Sidebar */
     --sidebar-bg: rgb(17 24 39 / 0.95);
     --sidebar-border: rgb(255 255 255 / 0.1);
     --sidebar-text: #ffffff;
@@ -41,39 +40,75 @@
     --layer-text-active: #ffffff;
     --layer-text-inactive: #6b7280;
     --layer-desc: #4b5563;
+
+    /* Floating panels (AttributeWindow, CAD controls, etc.) */
+    --panel-bg: #0f1117;
+    --panel-surface: rgba(255 255 255 / 0.04);
+    --panel-surface-2: rgba(255 255 255 / 0.02);
+    --panel-border: rgba(255 255 255 / 0.08);
+    --panel-border-strong: rgba(255 255 255 / 0.1);
+    --panel-text: #ffffff;
+    --panel-muted: #6b7280;
+    --panel-muted-2: #4b5563;
+    --panel-thead: #0f1117;
+    --panel-row-hover: rgba(255 255 255 / 0.04);
+    --panel-row-stripe: rgba(255 255 255 / 0.02);
+    --panel-input-bg: rgba(255 255 255 / 0.06);
+    --panel-input-border: rgba(255 255 255 / 0.12);
+    --panel-input-text: #ffffff;
+    --panel-input-placeholder: #4b5563;
   }
 
+  /* ── Light theme ── */
+  /* Uses subtle blue-gray tints — not pure white */
   html.light {
-    /* Sidebar tokens — light */
-    --sidebar-bg: #ffffff;
-    --sidebar-border: #e5e7eb;
+    /* Header */
+    --header-bg: #f4f6f8;
+    --header-border: #dde3ea;
+    --header-text: #111827;
+    --header-muted: #6b7280;
+    --header-hover-bg: #e8ecf0;
+    --dropdown-bg: #ffffff;
+    --dropdown-border: #dde3ea;
+    --dropdown-text: #111827;
+    --dropdown-muted: #6b7280;
+    --dropdown-divider: #eaecef;
+
+    /* Sidebar */
+    --sidebar-bg: #f4f6f8;
+    --sidebar-border: #dde3ea;
     --sidebar-text: #111827;
     --sidebar-muted: #6b7280;
-    --sidebar-hover: #f9fafb;
+    --sidebar-hover: #e8ecf0;
     --sidebar-tab-inactive: #6b7280;
     --sidebar-tab-hover: #111827;
-    --sidebar-toggle-bg: #f3f4f6;
-    --sidebar-toggle-border: #e5e7eb;
+    --sidebar-toggle-bg: #e8ecf0;
+    --sidebar-toggle-border: #dde3ea;
     --sidebar-toggle-text: #6b7280;
     --layer-active-bg: rgb(14 165 233 / 0.08);
-    --layer-active-border: rgb(14 165 233 / 0.5);
-    --layer-inactive-bg: #f9fafb;
-    --layer-inactive-border: #e5e7eb;
+    --layer-active-border: rgb(14 165 233 / 0.45);
+    --layer-inactive-bg: #eef1f5;
+    --layer-inactive-border: #dde3ea;
     --layer-text-active: #111827;
     --layer-text-inactive: #6b7280;
     --layer-desc: #9ca3af;
 
-    --header-bg: #ffffff;
-    --header-border: #e5e7eb;
-    --header-text: #111827;
-    --header-muted: #6b7280;
-    --header-hover-bg: #f3f4f6;
-    --dropdown-bg: #ffffff;
-    --dropdown-border: #e5e7eb;
-    --dropdown-hover: #f9fafb;
-    --dropdown-text: #111827;
-    --dropdown-muted: #6b7280;
-    --dropdown-divider: #e5e7eb;
+    /* Floating panels */
+    --panel-bg: #ffffff;
+    --panel-surface: #f4f6f8;
+    --panel-surface-2: #eef1f5;
+    --panel-border: #dde3ea;
+    --panel-border-strong: #ccd2da;
+    --panel-text: #111827;
+    --panel-muted: #6b7280;
+    --panel-muted-2: #9ca3af;
+    --panel-thead: #eef1f5;
+    --panel-row-hover: #eef1f5;
+    --panel-row-stripe: #f8f9fa;
+    --panel-input-bg: #ffffff;
+    --panel-input-border: #dde3ea;
+    --panel-input-text: #111827;
+    --panel-input-placeholder: #9ca3af;
   }
 
   html, body, #root {
@@ -122,6 +157,8 @@
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgb(255 255 255 / 0.15); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: rgb(255 255 255 / 0.25); }
+html.light ::-webkit-scrollbar-thumb { background: #ccd2da; }
+html.light ::-webkit-scrollbar-thumb:hover { background: #b0bac6; }
 
 /* MapLibre popup override */
 .maplibregl-popup-content {
