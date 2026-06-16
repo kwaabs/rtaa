@@ -66,7 +66,7 @@ interface LineLengthResult {
 }
 
 export function SpatialToolbar() {
-  const { mapRef, setSpatialFilter } = useMapStore()
+  const { mapRef, setSpatialFilter, sidebarOpen } = useMapStore()
   const { setOpen: openQuery } = useQueryStore()
   const {
     activeTool, drawn, measureInfo, bufferRadius,
@@ -258,8 +258,11 @@ export function SpatialToolbar() {
 
   return (
     <>
-      {/* Floating tool buttons — collapsed by default */}
-      <div className="absolute left-4 top-24 z-30 flex flex-col gap-1">
+      {/* Floating tool buttons — sits just outside the sidebar toggle */}
+      <div
+        className="absolute top-4 z-30 flex flex-col gap-1 transition-all duration-300"
+        style={{ left: sidebarOpen ? 'calc(var(--sidebar-width) + 0.75rem)' : '2.5rem' }}
+      >
         {/* Toggle button */}
         <button
           onClick={() => {
@@ -345,7 +348,7 @@ export function SpatialToolbar() {
 
       {/* Measure result */}
       {measureInfo && (
-        <div className="absolute left-4 top-56 z-30 bg-white rounded-lg shadow-lg border border-gray-200 px-3 py-2 flex items-center gap-2">
+        <div className="absolute top-56 z-30 bg-white rounded-lg shadow-lg border border-gray-200 px-3 py-2 flex items-center gap-2" style={{ left: sidebarOpen ? 'calc(var(--sidebar-width) + 0.75rem)' : '2.5rem' }}>
           <Ruler size={14} className="text-purple-500" />
           <span className="text-sm font-semibold text-gray-800">{measureInfo}</span>
           <button onClick={() => { setMeasureInfo(null); setDrawn(null) }} className="text-gray-400 hover:text-gray-600 ml-1">
@@ -356,7 +359,7 @@ export function SpatialToolbar() {
 
       {/* Turf: Line length result */}
       {lineLengthResult && (
-        <div className="absolute left-4 top-56 z-30 bg-white rounded-lg shadow-lg border border-gray-200 p-3 min-w-[220px]">
+        <div className="absolute top-56 z-30 bg-white rounded-lg shadow-lg border border-gray-200 p-3 min-w-[220px]" style={{ left: sidebarOpen ? 'calc(var(--sidebar-width) + 0.75rem)' : '2.5rem' }}>
           <div className="flex items-center justify-between mb-1.5">
             <div className="flex items-center gap-1.5 text-sm font-semibold text-gray-800">
               <RouteIcon size={14} className="text-green-500" />
@@ -373,7 +376,7 @@ export function SpatialToolbar() {
 
       {/* Turf: Nearest features result */}
       {nearbyResults && (
-        <div className="absolute left-4 top-56 z-30 bg-white rounded-lg shadow-lg border border-gray-200 p-3 w-72 max-h-80 overflow-y-auto">
+        <div className="absolute top-56 z-30 bg-white rounded-lg shadow-lg border border-gray-200 p-3 w-72 max-h-80 overflow-y-auto" style={{ left: sidebarOpen ? 'calc(var(--sidebar-width) + 0.75rem)' : '2.5rem' }}>
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5 text-sm font-semibold text-gray-800">
               <Crosshair size={14} className="text-blue-500" />

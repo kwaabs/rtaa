@@ -14,7 +14,7 @@ export default function LayerPanel() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-12 text-gray-500">
+      <div className="flex items-center justify-center py-12" style={{ color: 'var(--sidebar-muted)' }}>
         <Loader2 className="w-5 h-5 animate-spin mr-2" />
         Loading layers…
       </div>
@@ -23,7 +23,7 @@ export default function LayerPanel() {
 
   if (isError || !layers?.length) {
     return (
-      <div className="p-4 text-sm text-gray-500 text-center">
+      <div className="p-4 text-sm text-center" style={{ color: 'var(--sidebar-muted)' }}>
         {isError ? 'Failed to load layers.' : 'No layers configured.'}
       </div>
     )
@@ -37,7 +37,6 @@ export default function LayerPanel() {
     })
   }
 
-  // Symbology editor overlays the whole panel
   if (symbologyLayer) {
     return (
       <div className="h-full flex flex-col">
@@ -57,10 +56,11 @@ export default function LayerPanel() {
         return (
           <div
             key={layer.name}
-            className={cn(
-              'rounded-lg border transition-colors',
-              active ? 'border-brand-500/40 bg-brand-500/5' : 'border-white/5 bg-white/[0.02]',
-            )}
+            className="rounded-lg border transition-colors"
+            style={{
+              background: active ? 'var(--layer-active-bg)' : 'var(--layer-inactive-bg)',
+              borderColor: active ? 'var(--layer-active-border)' : 'var(--layer-inactive-border)',
+            }}
           >
             {/* Main row */}
             <div className="flex items-center gap-2 px-3 py-2">
@@ -74,14 +74,18 @@ export default function LayerPanel() {
 
               <label
                 htmlFor={`layer-${layer.name}`}
-                className={cn(
-                  'flex-1 min-w-0 cursor-pointer select-none',
-                  active ? 'text-white' : 'text-gray-500',
-                )}
+                className="flex-1 min-w-0 cursor-pointer select-none"
               >
-                <p className="text-sm font-medium truncate">{layer.display_name}</p>
+                <p
+                  className="text-sm font-medium truncate"
+                  style={{ color: active ? 'var(--layer-text-active)' : 'var(--layer-text-inactive)' }}
+                >
+                  {layer.display_name}
+                </p>
                 {layer.description && (
-                  <p className="text-xs text-gray-600 truncate mt-0.5">{layer.description}</p>
+                  <p className="text-xs truncate mt-0.5" style={{ color: 'var(--layer-desc)' }}>
+                    {layer.description}
+                  </p>
                 )}
               </label>
 
@@ -91,35 +95,45 @@ export default function LayerPanel() {
                 title="Edit symbology"
                 className={cn(
                   'flex-shrink-0 p-0.5 rounded transition-colors',
-                  hasOverride
-                    ? 'text-purple-400 bg-purple-500/15'
-                    : 'text-gray-600 hover:text-purple-300',
+                  hasOverride ? 'text-purple-400 bg-purple-500/15' : '',
                 )}
+                style={!hasOverride ? { color: 'var(--sidebar-muted)' } : undefined}
+                onMouseEnter={(e) => {
+                  if (!hasOverride) (e.currentTarget as HTMLElement).style.color = '#a78bfa'
+                }}
+                onMouseLeave={(e) => {
+                  if (!hasOverride) (e.currentTarget as HTMLElement).style.color = 'var(--sidebar-muted)'
+                }}
               >
                 <Palette className="w-3.5 h-3.5" />
               </button>
 
-              {/* Opacity gear — only when active */}
+              {/* Opacity gear */}
               {active && (
                 <button
                   onClick={() => toggleOpacityPanel(layer.name)}
                   title="Adjust opacity"
-                  className={cn(
-                    'flex-shrink-0 p-0.5 rounded transition-colors',
-                    showOpacity
-                      ? 'text-brand-400 bg-brand-500/15'
-                      : 'text-gray-600 hover:text-gray-300',
-                  )}
+                  className="flex-shrink-0 p-0.5 rounded transition-colors"
+                  style={{ color: showOpacity ? '#0ea5e9' : 'var(--sidebar-muted)' }}
+                  onMouseEnter={(e) => {
+                    if (!showOpacity) (e.currentTarget as HTMLElement).style.color = 'var(--sidebar-text)'
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!showOpacity) (e.currentTarget as HTMLElement).style.color = 'var(--sidebar-muted)'
+                  }}
                 >
                   <Settings2 className="w-3.5 h-3.5" />
                 </button>
               )}
             </div>
 
-            {/* Collapsible opacity slider */}
+            {/* Opacity slider */}
             {active && showOpacity && (
-              <div className="px-3 pb-2.5 flex items-center gap-2 border-t border-white/5 pt-2">
-                <span className="text-xs text-gray-500 w-12 flex-shrink-0">Opacity</span>
+              <div
+                className="px-3 pb-2.5 flex items-center gap-2 pt-2"
+                style={{ borderTop: '1px solid var(--layer-inactive-border)' }}
+              >
+                <span className="text-xs w-12 flex-shrink-0" style={{ color: 'var(--sidebar-muted)' }}>Opacity</span>
                 <input
                   type="range"
                   min={0}
@@ -129,7 +143,7 @@ export default function LayerPanel() {
                   onChange={(e) => setLayerOpacity(layer.name, parseFloat(e.target.value))}
                   className="flex-1 accent-brand-500 h-1"
                 />
-                <span className="text-xs text-gray-400 w-8 text-right flex-shrink-0">
+                <span className="text-xs w-8 text-right flex-shrink-0" style={{ color: 'var(--sidebar-muted)' }}>
                   {Math.round(opacity * 100)}%
                 </span>
               </div>
