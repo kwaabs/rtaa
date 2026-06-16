@@ -22,9 +22,47 @@
     --dropdown-text: #f9fafb;
     --dropdown-muted: #9ca3af;
     --dropdown-divider: rgb(255 255 255 / 0.08);
+
+    /* Sidebar tokens — default dark */
+    --sidebar-bg: rgb(17 24 39 / 0.95);
+    --sidebar-border: rgb(255 255 255 / 0.1);
+    --sidebar-text: #ffffff;
+    --sidebar-muted: #9ca3af;
+    --sidebar-hover: rgb(255 255 255 / 0.05);
+    --sidebar-tab-inactive: #9ca3af;
+    --sidebar-tab-hover: #ffffff;
+    --sidebar-toggle-bg: #1f2937;
+    --sidebar-toggle-border: rgb(255 255 255 / 0.1);
+    --sidebar-toggle-text: #9ca3af;
+    --layer-active-bg: rgb(14 165 233 / 0.05);
+    --layer-active-border: rgb(14 165 233 / 0.4);
+    --layer-inactive-bg: rgb(255 255 255 / 0.02);
+    --layer-inactive-border: rgb(255 255 255 / 0.05);
+    --layer-text-active: #ffffff;
+    --layer-text-inactive: #6b7280;
+    --layer-desc: #4b5563;
   }
 
   html.light {
+    /* Sidebar tokens — light */
+    --sidebar-bg: #ffffff;
+    --sidebar-border: #e5e7eb;
+    --sidebar-text: #111827;
+    --sidebar-muted: #6b7280;
+    --sidebar-hover: #f9fafb;
+    --sidebar-tab-inactive: #6b7280;
+    --sidebar-tab-hover: #111827;
+    --sidebar-toggle-bg: #f3f4f6;
+    --sidebar-toggle-border: #e5e7eb;
+    --sidebar-toggle-text: #6b7280;
+    --layer-active-bg: rgb(14 165 233 / 0.08);
+    --layer-active-border: rgb(14 165 233 / 0.5);
+    --layer-inactive-bg: #f9fafb;
+    --layer-inactive-border: #e5e7eb;
+    --layer-text-active: #111827;
+    --layer-text-inactive: #6b7280;
+    --layer-desc: #9ca3af;
+
     --header-bg: #ffffff;
     --header-border: #e5e7eb;
     --header-text: #111827;
