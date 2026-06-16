@@ -98,7 +98,10 @@ function buildHighlightLayer(
     'source-layer': sourceLayer,
     minzoom: layer.min_zoom,
     maxzoom: layer.max_zoom,
-    filter: ['in', ['get', 'objectid'], ['literal', ids]] as unknown as boolean,
+    filter: ['in',
+      ['coalesce', ['get', 'objectid'], ['get', 'OBJECTID'], ['get', 'id'], ['get', 'ID']],
+      ['literal', [...ids.map(Number), ...ids.map(String)]],
+    ] as unknown as boolean,
   }
   if (layer.layer_type === 'fill') {
     return { ...base, type: 'fill', paint: { 'fill-color': HIGHLIGHT_COLOR, 'fill-opacity': 0.6, 'fill-outline-color': HIGHLIGHT_OUTLINE } }
