@@ -2,7 +2,7 @@ import { useState, useRef } from 'react'
 import { Crosshair, CornerDownRight, X } from 'lucide-react'
 import { useMapStore } from '@/stores/mapStore'
 
-const SIDEBAR_WIDTH = 320 // must match --sidebar-width in index.css
+const SIDEBAR_WIDTH = 320
 
 const EARTH_CIRCUMFERENCE = 40_075_016.686
 
@@ -12,7 +12,7 @@ function metersPerPixel(zoom: number, latDeg: number): number {
 }
 
 function scaleDenominator(mpp: number): number {
-  return mpp / 0.000264583 // 96 dpi
+  return mpp / 0.000264583
 }
 
 function formatScale(denom: number): string {
@@ -63,22 +63,25 @@ export default function MapStatusBar() {
       {/* Fly-to popover */}
       {flyOpen && (
         <div
-          className="absolute z-50 rounded-lg border border-white/10 shadow-xl"
+          className="absolute z-50 rounded-lg shadow-xl"
           style={{
             bottom: 36,
             left: sidebarOpen ? SIDEBAR_WIDTH + 8 : 8,
-            background: 'rgba(10,12,18,0.95)',
-            backdropFilter: 'blur(8px)',
+            background: 'var(--panel-bg)',
+            border: '1px solid var(--panel-border-strong)',
             minWidth: 260,
           }}
         >
-          <div className="flex items-center justify-between px-3 py-2 border-b border-white/8">
-            <span className="text-xs font-semibold text-white flex items-center gap-1.5">
+          <div className="flex items-center justify-between px-3 py-2" style={{ borderBottom: '1px solid var(--panel-border)' }}>
+            <span className="text-xs font-semibold flex items-center gap-1.5" style={{ color: 'var(--panel-text)' }}>
               <Crosshair className="w-3.5 h-3.5 text-brand-400" />
               Fly to coordinates
             </span>
-            <button onClick={() => { setFlyOpen(false); setError('') }}
-              className="text-gray-500 hover:text-white transition-colors">
+            <button
+              onClick={() => { setFlyOpen(false); setError('') }}
+              style={{ color: 'var(--panel-muted)' }}
+              className="transition-colors hover:text-red-400"
+            >
               <X className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -88,7 +91,12 @@ export default function MapStatusBar() {
               value={input}
               onChange={(e) => { setInput(e.target.value); setError('') }}
               placeholder="Lat, Lng  e.g. 5.6037, -0.1870"
-              className="w-full text-xs bg-white/6 border border-white/10 rounded px-2.5 py-1.5 text-white placeholder-gray-600 focus:outline-none focus:border-brand-500/50 font-mono"
+              className="w-full text-xs rounded px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-400 font-mono"
+              style={{
+                background: 'var(--panel-input-bg)',
+                border: '1px solid var(--panel-input-border)',
+                color: 'var(--panel-input-text)',
+              }}
               autoFocus
             />
             {error && <p className="text-xs text-red-400">{error}</p>}
@@ -108,19 +116,19 @@ export default function MapStatusBar() {
         className="absolute bottom-0 right-0 h-7 flex items-center px-2 gap-0 z-40 transition-all duration-300"
         style={{
           left: sidebarOpen ? SIDEBAR_WIDTH : 0,
-          background: 'rgba(10,12,18,0.85)',
-          backdropFilter: 'blur(4px)',
-          borderTop: '1px solid rgba(255,255,255,0.06)',
+          background: 'var(--statusbar-bg)',
+          borderTop: '1px solid var(--statusbar-border)',
         }}
-        // pointer-events-auto so hovering the bar doesn't move coordinates
         onMouseEnter={() => useMapStore.getState().setMousePos(null)}
       >
         {/* Fly-to button */}
         <button
           onClick={() => { setFlyOpen((v) => !v); setTimeout(() => inputRef.current?.focus(), 50) }}
           title="Fly to coordinates"
-          className={`flex items-center justify-center w-5 h-5 rounded mr-2 flex-shrink-0 transition-colors
-            ${flyOpen ? 'text-brand-400 bg-brand-500/15' : 'text-gray-500 hover:text-white hover:bg-white/10'}`}
+          className="flex items-center justify-center w-5 h-5 rounded mr-2 flex-shrink-0 transition-colors"
+          style={{ color: flyOpen ? '#0ea5e9' : 'var(--statusbar-muted)' }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = '#0ea5e9' }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = flyOpen ? '#0ea5e9' : 'var(--statusbar-muted)' }}
         >
           <Crosshair className="w-3.5 h-3.5" />
         </button>
@@ -128,41 +136,38 @@ export default function MapStatusBar() {
         {/* Coordinates */}
         <div className="flex items-center gap-1 min-w-[200px]">
           <Dot />
-          <span className="text-[10px] font-mono text-gray-300 tabular-nums">
+          <span className="text-[10px] font-mono tabular-nums" style={{ color: 'var(--statusbar-text)' }}>
             {mousePos
               ? <>
-                  <span className="text-gray-500">Lat </span>{fmtN(mousePos.lat)}
+                  <span style={{ color: 'var(--statusbar-muted)' }}>Lat </span>{fmtN(mousePos.lat)}
                   {'  '}
-                  <span className="text-gray-500">Lng </span>{fmtN(mousePos.lng)}
+                  <span style={{ color: 'var(--statusbar-muted)' }}>Lng </span>{fmtN(mousePos.lng)}
                 </>
-              : <span className="text-gray-600 italic">hover map for coordinates</span>}
+              : <span className="italic" style={{ color: 'var(--statusbar-muted)' }}>hover map for coordinates</span>}
           </span>
         </div>
 
         <Sep />
 
-        {/* CRS */}
         <div className="flex items-center gap-1.5">
           <Dot color="#38bdf8" />
-          <span className="text-[10px] text-gray-400 font-medium">EPSG:4326</span>
+          <span className="text-[10px] font-medium" style={{ color: 'var(--statusbar-text)' }}>EPSG:4326</span>
         </div>
 
         <Sep />
 
-        {/* Scale */}
         <div className="flex items-center gap-1.5">
           <Dot color="#a78bfa" />
-          <span className="text-[10px] font-mono text-gray-300">{formatScale(scaleDenom)}</span>
-          <span className="text-[10px] text-gray-600">({scaleLabel})</span>
+          <span className="text-[10px] font-mono" style={{ color: 'var(--statusbar-text)' }}>{formatScale(scaleDenom)}</span>
+          <span className="text-[10px]" style={{ color: 'var(--statusbar-muted)' }}>({scaleLabel})</span>
         </div>
 
         <Sep />
 
-        {/* Zoom */}
         <div className="flex items-center gap-1.5">
           <Dot color="#34d399" />
-          <span className="text-[10px] text-gray-500">Z</span>
-          <span className="text-[10px] font-mono text-gray-300">{viewState.zoom.toFixed(1)}</span>
+          <span className="text-[10px]" style={{ color: 'var(--statusbar-muted)' }}>Z</span>
+          <span className="text-[10px] font-mono" style={{ color: 'var(--statusbar-text)' }}>{viewState.zoom.toFixed(1)}</span>
         </div>
       </div>
     </>
@@ -170,9 +175,9 @@ export default function MapStatusBar() {
 }
 
 function Sep() {
-  return <div className="mx-2.5 h-3 w-px bg-white/10 flex-shrink-0" />
+  return <div className="mx-2.5 h-3 w-px flex-shrink-0" style={{ background: 'var(--statusbar-border)' }} />
 }
 
-function Dot({ color = '#4b5563' }: { color?: string }) {
-  return <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: color }} />
+function Dot({ color }: { color?: string }) {
+  return <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: color ?? 'var(--statusbar-muted)' }} />
 }

@@ -57,6 +57,11 @@
     --panel-input-border: rgba(255 255 255 / 0.12);
     --panel-input-text: #ffffff;
     --panel-input-placeholder: #4b5563;
+    /* Status bar */
+    --statusbar-bg: rgba(10, 12, 18, 0.88);
+    --statusbar-border: rgba(255, 255, 255, 0.06);
+    --statusbar-text: #d1d5db;
+    --statusbar-muted: #4b5563;
   }
 
   /* ── Light theme ── */
@@ -73,6 +78,12 @@
     --dropdown-text: #111827;
     --dropdown-muted: #6b7280;
     --dropdown-divider: #eaecef;
+
+    /* Status bar — light */
+    --statusbar-bg: rgba(244, 246, 248, 0.96);
+    --statusbar-border: #dde3ea;
+    --statusbar-text: #374151;
+    --statusbar-muted: #9ca3af;
 
     /* Sidebar */
     --sidebar-bg: #f4f6f8;

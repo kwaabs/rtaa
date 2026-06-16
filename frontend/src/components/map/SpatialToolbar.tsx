@@ -132,8 +132,8 @@ export function SpatialToolbar() {
             layerId: lineFeature.layer.id,
           })
           // Highlight the clicked line feature
-          const oid = lineFeature.properties?.['objectid'] ?? lineFeature.properties?.['OBJECTID']
-          if (oid != null) setHighlightedIds(lineFeature.layer.id, [Number(oid)])
+          const oid = lineFeature.properties?.['objectid'] ?? lineFeature.properties?.['OBJECTID'] ?? lineFeature.properties?.['id']
+          if (oid != null) setHighlightedIds(lineFeature.layer.id, [Number(oid), String(oid)])
           else clearHighlights()
         } else {
           setLineLengthResult(null)

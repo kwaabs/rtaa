@@ -142,10 +142,10 @@ export default function MapView() {
           })
           .filter(Boolean) as import('@/stores/popupStore').PickerCandidate[]
 
-      /** Highlight the clicked feature by objectid if available */
+      /** Highlight the clicked feature by objectid (handles case and type variants) */
       const highlightFeature = (layerName: string, props: Record<string, unknown>) => {
-        const oid = props['objectid'] ?? props['OBJECTID']
-        if (oid != null) setHighlightedIds(layerName, [Number(oid)])
+        const oid = props['objectid'] ?? props['OBJECTID'] ?? props['id'] ?? props['ID']
+        if (oid != null) setHighlightedIds(layerName, [Number(oid), String(oid)])
         else clearHighlights()
       }
 
