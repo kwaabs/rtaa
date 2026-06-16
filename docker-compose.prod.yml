@@ -1,0 +1,49 @@
+# Production compose — runs web + api as built Docker images alongside the
+# existing infra containers (db, gotrue, valkey, martin).
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+services:
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: rtaa_api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://supabase_admin:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-rtaa}?search_path=public,dbo&sslmode=disable
+      GOTRUE_URL: http://gotrue:9999
+      VALKEY_URL: redis://:${VALKEY_PASSWORD:-valkeypassword}@valkey:6379/0
+      BACKEND_PORT: 9833
+      ENV: production
+    ports:
+      - "9833:9833"
+    networks:
+      - rtaa_net
+
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # In production these point to the nginx proxy paths (same origin)
+        VITE_API_URL: ""
+        VITE_GOTRUE_URL: ""
+        VITE_GOTRUE_ANON_KEY: ${VITE_GOTRUE_ANON_KEY:-}
+        VITE_MARTIN_URL: /martin
+    container_name: rtaa_web
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - rtaa_net
+
+networks:
+  rtaa_net:
+    external: true

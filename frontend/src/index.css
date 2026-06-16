@@ -1,0 +1,70 @@
+/* MapLibre GL CSS — must precede all other statements */
+@import 'maplibre-gl/dist/maplibre-gl.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --sidebar-width: 320px;
+    --header-height: 52px;
+  }
+
+  html, body, #root {
+    height: 100%;
+    overflow: hidden;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium
+           transition-colors focus-visible:outline-none focus-visible:ring-2
+           focus-visible:ring-brand-500 disabled:pointer-events-none disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply btn bg-brand-600 text-white hover:bg-brand-700;
+  }
+  .btn-ghost {
+    @apply btn hover:bg-white/10;
+  }
+  .btn-danger {
+    @apply btn bg-red-600 text-white hover:bg-red-700;
+  }
+
+  .input {
+    @apply w-full rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm
+           placeholder:text-gray-500 focus:border-brand-500 focus:outline-none
+           focus:ring-1 focus:ring-brand-500 transition-colors;
+  }
+
+  .card {
+    @apply rounded-xl border border-white/10 bg-gray-900/80 backdrop-blur-sm;
+  }
+
+  .panel {
+    @apply flex flex-col gap-3 p-4;
+  }
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgb(255 255 255 / 0.15); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgb(255 255 255 / 0.25); }
+
+/* MapLibre popup override */
+.maplibregl-popup-content {
+  background: #111827 !important;
+  color: #f9fafb !important;
+  border: 1px solid rgb(255 255 255 / 0.1) !important;
+  border-radius: 8px !important;
+  padding: 12px 16px !important;
+  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.5) !important;
+}
+.maplibregl-popup-tip { border-top-color: #111827 !important; }
