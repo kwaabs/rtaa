@@ -6,6 +6,7 @@ import { QueryResultsWindow } from '@/components/map/QueryResultsWindow'
 import { CadImportDialog } from '@/components/map/CadImportDialog'
 import { CadOverlayControls } from '@/components/map/CadOverlayControls'
 import { CadViewerPanel } from '@/components/map/CadViewerPanel'
+import { SpatialToolbar } from '@/components/map/SpatialToolbar'
 import Sidebar from '@/components/sidebar/Sidebar'
 import Header from '@/components/layout/Header'
 import { useCadStore } from '@/stores/cadStore'
@@ -27,6 +28,7 @@ export default function MapPage() {
       <div className="relative flex-1 overflow-hidden">
         <MapView />
         <Sidebar />
+        <SpatialToolbar />
 
         {/* CAD button — bottom-right, above the NavigationControl */}
         <div className="absolute bottom-8 right-12 z-30 flex items-center gap-1">

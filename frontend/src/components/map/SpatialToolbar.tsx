@@ -1,5 +1,5 @@
 /**
- * SpatialToolbar — floating UI buttons for draw/measure tools.
+ * SpatialToolbar — floating UI buttons for draw/measure/analysis tools.
  *
  * Map event listeners attach directly to the underlying MapLibre GL JS map via
  * mapStore.mapRef (avoids requiring this component to be inside react-map-gl's
@@ -7,7 +7,8 @@
  * by SpatialDrawLayer (rendered inside MapView's Map component).
  */
 import { useEffect, useRef, useCallback, useState } from 'react'
-import { Square, Pentagon, Ruler, Circle, Trash2, X, ChevronDown } from 'lucide-react'
+import { Square, Pentagon, Ruler, Circle, Trash2, X, ChevronDown, RouteIcon, Crosshair } from 'lucide-react'
+import * as turf from '@turf/turf'
 // ── Minimal geo math (no external dependency) ───────────────────────────────
 
 /** Haversine distance in metres between two [lng, lat] points. */
@@ -47,10 +48,22 @@ function circlePolygon(center: [number, number], radiusM: number, steps = 64): G
   }
   return { type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [coords] } }
 }
+
 import { clsx } from 'clsx'
 import { useMapStore } from '@/stores/mapStore'
 import { useQueryStore } from '@/stores/queryStore'
 import { useSpatialStore, type SpatialTool } from '@/stores/spatialStore'
+
+interface NearbyFeature {
+  layerId: string
+  properties: Record<string, unknown>
+  distanceM: number
+}
+
+interface LineLengthResult {
+  lengthM: number
+  layerId: string
+}
 
 export function SpatialToolbar() {
   const { mapRef, setSpatialFilter } = useMapStore()
@@ -61,10 +74,28 @@ export function SpatialToolbar() {
   } = useSpatialStore()
 
   const [expanded, setExpanded] = useState(false)
+  const [nearbyRadius, setNearbyRadius] = useState(500)
+  const [nearbyResults, setNearbyResults] = useState<NearbyFeature[] | null>(null)
+  const [lineLengthResult, setLineLengthResult] = useState<LineLengthResult | null>(null)
 
   const anchorsRef = useRef<[number, number][]>([])
 
-  const activate = useCallback((tool: SpatialTool) => {
+  const activate = useCallback((tool: SpatialTool | 'line-length' | 'nearest') => {
+    setNearbyResults(null)
+    setLineLengthResult(null)
+    if (tool === 'line-length' || tool === 'nearest') {
+      // These are handled locally, not in spatialStore
+      if ((activeTool as string) === tool) {
+        clearAll()
+        anchorsRef.current = []
+        setActiveTool('none')
+      } else {
+        clearAll()
+        anchorsRef.current = []
+        setActiveTool(tool as SpatialTool)
+      }
+      return
+    }
     if (activeTool === tool) { clearAll(); anchorsRef.current = []; return }
     clearAll()
     anchorsRef.current = []
@@ -87,6 +118,66 @@ export function SpatialToolbar() {
     const handleClick = (e: maplibregl.MapMouseEvent) => {
       const pt: [number, number] = [e.lngLat.lng, e.lngLat.lat]
       const anchors = anchorsRef.current
+
+      // ── Turf: Line Length ─────────────────────────────────────────────────
+      if ((activeTool as string) === 'line-length') {
+        const features = map.queryRenderedFeatures(e.point)
+        const lineFeature = features.find(
+          (f) => f.geometry.type === 'LineString' || f.geometry.type === 'MultiLineString',
+        )
+        if (lineFeature) {
+          const lengthKm = turf.length(lineFeature as GeoJSON.Feature, { units: 'kilometers' })
+          setLineLengthResult({
+            lengthM: lengthKm * 1000,
+            layerId: lineFeature.layer.id,
+          })
+        } else {
+          setLineLengthResult(null)
+        }
+        return
+      }
+
+      // ── Turf: Nearest Features in Radius ─────────────────────────────────
+      if ((activeTool as string) === 'nearest') {
+        const clickPt = turf.point(pt)
+        // Expand pixel search area for better coverage
+        const pixelRadius = Math.min(nearbyRadius / 5, 200)
+        const features = map.queryRenderedFeatures(
+          [
+            [e.point.x - pixelRadius, e.point.y - pixelRadius],
+            [e.point.x + pixelRadius, e.point.y + pixelRadius],
+          ],
+        )
+
+        const results: NearbyFeature[] = []
+        const seen = new Set<string>()
+
+        for (const f of features) {
+          let centroid: GeoJSON.Feature<GeoJSON.Point>
+          try {
+            centroid = turf.centroid(f as GeoJSON.Feature)
+          } catch {
+            continue
+          }
+          const distKm = turf.distance(clickPt, centroid, { units: 'kilometers' })
+          const distM = distKm * 1000
+          if (distM > nearbyRadius) continue
+
+          const key = `${f.layer.id}:${JSON.stringify(f.properties)}`
+          if (seen.has(key)) continue
+          seen.add(key)
+
+          results.push({
+            layerId: f.layer.id,
+            properties: (f.properties ?? {}) as Record<string, unknown>,
+            distanceM: distM,
+          })
+        }
+
+        results.sort((a, b) => a.distanceM - b.distanceM)
+        setNearbyResults(results.slice(0, 10))
+        return
+      }
 
       if (activeTool === 'rect') {
         if (anchors.length === 0) {
@@ -161,7 +252,9 @@ export function SpatialToolbar() {
       map.off('click', handleClick)
       map.off('dblclick', handleDblClick)
     }
-  }, [activeTool, mapRef, bufferRadius, setSpatialFilter, openQuery, setActiveTool, setDrawn, setMeasureInfo])
+  }, [activeTool, mapRef, bufferRadius, nearbyRadius, setSpatialFilter, openQuery, setActiveTool, setDrawn, setMeasureInfo])
+
+  const formatDist = (m: number) => m >= 1000 ? `${(m / 1000).toFixed(2)} km` : `${m.toFixed(0)} m`
 
   return (
     <>
@@ -170,7 +263,7 @@ export function SpatialToolbar() {
         {/* Toggle button */}
         <button
           onClick={() => {
-            if (expanded) { clearAll(); anchorsRef.current = []; setSpatialFilter(null) }
+            if (expanded) { clearAll(); anchorsRef.current = []; setSpatialFilter(null); setNearbyResults(null); setLineLengthResult(null) }
             setExpanded((v) => !v)
           }}
           title={expanded ? 'Close spatial tools' : 'Spatial tools'}
@@ -187,8 +280,15 @@ export function SpatialToolbar() {
         {/* Expanded tools */}
         {expanded && (
           <div className="flex flex-col gap-1 bg-white/95 backdrop-blur rounded-xl shadow-lg border border-gray-200 p-1.5">
+            {/* Selection tools */}
+            <p className="text-[10px] font-semibold uppercase text-gray-400 px-1 pt-0.5">Select</p>
             <ToolButton icon={<Square size={16} />} label="Rectangle select" active={activeTool === 'rect'} onClick={() => activate('rect')} />
             <ToolButton icon={<Pentagon size={16} />} label="Polygon select" active={activeTool === 'poly'} onClick={() => activate('poly')} />
+
+            <div className="h-px bg-gray-200 my-0.5" />
+
+            {/* Measure tools */}
+            <p className="text-[10px] font-semibold uppercase text-gray-400 px-1">Measure</p>
             <ToolButton icon={<Ruler size={16} />} label="Measure distance" active={activeTool === 'measure'} onClick={() => activate('measure')} />
             <ToolButton icon={<Circle size={16} />} label="Buffer circle" active={activeTool === 'buffer'} onClick={() => activate('buffer')} />
 
@@ -198,7 +298,35 @@ export function SpatialToolbar() {
                 <input
                   type="number" min={10} step={50} value={bufferRadius}
                   onChange={(e) => setBufferRadius(Number(e.target.value))}
-                  className="w-16 text-xs border border-gray-200 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                  className="w-20 text-xs border border-gray-200 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                />
+              </div>
+            )}
+
+            <div className="h-px bg-gray-200 my-0.5" />
+
+            {/* Analysis tools (Turf.js) */}
+            <p className="text-[10px] font-semibold uppercase text-gray-400 px-1">Analysis</p>
+            <ToolButton
+              icon={<RouteIcon size={16} />}
+              label="Line length — click a line feature"
+              active={(activeTool as string) === 'line-length'}
+              onClick={() => activate('line-length')}
+            />
+            <ToolButton
+              icon={<Crosshair size={16} />}
+              label="Nearest features in radius"
+              active={(activeTool as string) === 'nearest'}
+              onClick={() => activate('nearest')}
+            />
+
+            {(activeTool as string) === 'nearest' && (
+              <div className="px-1.5 py-1">
+                <label className="text-[10px] text-gray-500 block mb-0.5">Radius (m)</label>
+                <input
+                  type="number" min={10} step={50} value={nearbyRadius}
+                  onChange={(e) => setNearbyRadius(Number(e.target.value))}
+                  className="w-20 text-xs border border-gray-200 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-400"
                 />
               </div>
             )}
@@ -226,13 +354,65 @@ export function SpatialToolbar() {
         </div>
       )}
 
+      {/* Turf: Line length result */}
+      {lineLengthResult && (
+        <div className="absolute left-4 top-56 z-30 bg-white rounded-lg shadow-lg border border-gray-200 p-3 min-w-[220px]">
+          <div className="flex items-center justify-between mb-1.5">
+            <div className="flex items-center gap-1.5 text-sm font-semibold text-gray-800">
+              <RouteIcon size={14} className="text-green-500" />
+              Line Length
+            </div>
+            <button onClick={() => setLineLengthResult(null)} className="text-gray-400 hover:text-gray-600">
+              <X size={13} />
+            </button>
+          </div>
+          <p className="text-lg font-bold text-gray-900">{formatDist(lineLengthResult.lengthM)}</p>
+          <p className="text-[11px] text-gray-400 mt-0.5 truncate">Layer: {lineLengthResult.layerId}</p>
+        </div>
+      )}
+
+      {/* Turf: Nearest features result */}
+      {nearbyResults && (
+        <div className="absolute left-4 top-56 z-30 bg-white rounded-lg shadow-lg border border-gray-200 p-3 w-72 max-h-80 overflow-y-auto">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-1.5 text-sm font-semibold text-gray-800">
+              <Crosshair size={14} className="text-blue-500" />
+              Nearby Features
+            </div>
+            <button onClick={() => setNearbyResults(null)} className="text-gray-400 hover:text-gray-600">
+              <X size={13} />
+            </button>
+          </div>
+          {nearbyResults.length === 0 ? (
+            <p className="text-xs text-gray-400 text-center py-2">No features found within {formatDist(nearbyRadius)}</p>
+          ) : (
+            <div className="flex flex-col gap-1.5">
+              {nearbyResults.map((r, i) => {
+                const label = (r.properties['name'] ?? r.properties['label'] ?? r.properties['id'] ?? `#${i + 1}`) as string
+                return (
+                  <div key={i} className="rounded-lg bg-gray-50 border border-gray-100 px-2.5 py-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-gray-700 truncate max-w-[160px]">{String(label)}</span>
+                      <span className="text-[11px] font-semibold text-blue-600 ml-2 shrink-0">{formatDist(r.distanceM)}</span>
+                    </div>
+                    <span className="text-[10px] text-gray-400">{r.layerId}</span>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Hint banner */}
       {activeTool !== 'none' && (
         <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 bg-black/70 text-white text-xs rounded-full px-4 py-1.5 pointer-events-none whitespace-nowrap">
-          {activeTool === 'rect'    && 'Click first corner, then click to complete rectangle'}
-          {activeTool === 'poly'    && 'Click to add vertices · Double-click to close polygon'}
-          {activeTool === 'measure' && 'Click start point, then click end point'}
-          {activeTool === 'buffer'  && 'Click a point to draw a buffer circle'}
+          {activeTool === 'rect'        && 'Click first corner, then click to complete rectangle'}
+          {activeTool === 'poly'        && 'Click to add vertices · Double-click to close polygon'}
+          {activeTool === 'measure'     && 'Click start point, then click end point'}
+          {activeTool === 'buffer'      && 'Click a point to draw a buffer circle'}
+          {(activeTool as string) === 'line-length' && 'Click on any line feature to measure its length'}
+          {(activeTool as string) === 'nearest'     && `Click a point to find features within ${formatDist(nearbyRadius)}`}
         </div>
       )}
     </>
