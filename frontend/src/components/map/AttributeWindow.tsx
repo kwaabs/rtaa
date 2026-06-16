@@ -1,17 +1,17 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { X, Minus, Maximize2, Minimize2, Copy, Check, Search } from 'lucide-react'
 import { usePopupStore } from '@/stores/popupStore'
+import { useMapStore } from '@/stores/mapStore'
 import { useAttrs } from '@/hooks/useFeatures'
 import { cn } from '@/lib/utils'
 
 type Tab = 'key' | 'all' | 'cond'
 
 const DEFAULT_W = 460
-const DEFAULT_H = 400   // capped height — user can resize taller if needed
+const DEFAULT_H = 400
 const MIN_W = 320
 const MIN_H = 180
 
-/** Fields that belong on the Condition tab */
 function isConditionField(key: string): boolean {
   const k = key.toLowerCase()
   return k === 'condition' || k.includes('condition') || k.startsWith('cv_') || k.startsWith('cv')
@@ -19,6 +19,7 @@ function isConditionField(key: string): boolean {
 
 export default function AttributeWindow() {
   const { popup, closePopup } = usePopupStore()
+  const { clearHighlights } = useMapStore()
 
   const [pos, setPos] = useState({ x: 60, y: 80 })
   const [size, setSize] = useState({ w: DEFAULT_W, h: DEFAULT_H })
@@ -27,7 +28,6 @@ export default function AttributeWindow() {
   const [tab, setTab] = useState<Tab>('key')
   const [search, setSearch] = useState('')
 
-  // Reset position when a new feature opens
   const prevLayerRef = useRef<string | null>(null)
   useEffect(() => {
     if (popup && popup.layerName !== prevLayerRef.current) {
@@ -38,6 +38,12 @@ export default function AttributeWindow() {
     }
   }, [popup?.layerName])
 
+  // Clear map highlight when panel closes
+  const handleClose = useCallback(() => {
+    closePopup()
+    clearHighlights()
+  }, [closePopup, clearHighlights])
+
   if (!popup) return null
 
   return (
@@ -47,7 +53,7 @@ export default function AttributeWindow() {
       size={size} setSize={setSize}
       minimized={minimized} setMinimized={setMinimized}
       maximized={maximized} setMaximized={setMaximized}
-      onClose={closePopup}
+      onClose={handleClose}
     >
       {!minimized && (
         <WindowBody
@@ -61,7 +67,7 @@ export default function AttributeWindow() {
   )
 }
 
-// ─── Shell (drag + resize + chrome) ──────────────────────────────────────────
+// ─── Shell ───────────────────────────────────────────────────────────────────
 
 interface ShellProps {
   popup: import('@/stores/popupStore').PopupInfo
@@ -93,9 +99,7 @@ function WindowShell({
 
   const onTitlePointerMove = useCallback((e: React.PointerEvent) => {
     if (!dragRef.current) return
-    const dx = e.clientX - dragRef.current.startX
-    const dy = e.clientY - dragRef.current.startY
-    setPos({ x: dragRef.current.origX + dx, y: dragRef.current.origY + dy })
+    setPos({ x: dragRef.current.origX + (e.clientX - dragRef.current.startX), y: dragRef.current.origY + (e.clientY - dragRef.current.startY) })
   }, [setPos])
 
   const onTitlePointerUp = useCallback(() => { dragRef.current = null }, [])
@@ -108,51 +112,48 @@ function WindowShell({
 
   const onResizePointerMove = useCallback((e: React.PointerEvent) => {
     if (!resizeRef.current) return
-    const dw = e.clientX - resizeRef.current.startX
-    const dh = e.clientY - resizeRef.current.startY
     setSize({
-      w: Math.max(MIN_W, resizeRef.current.origW + dw),
-      h: Math.max(MIN_H, resizeRef.current.origH + dh),
+      w: Math.max(MIN_W, resizeRef.current.origW + (e.clientX - resizeRef.current.startX)),
+      h: Math.max(MIN_H, resizeRef.current.origH + (e.clientY - resizeRef.current.startY)),
     })
   }, [setSize])
 
   const onResizePointerUp = useCallback(() => { resizeRef.current = null }, [])
 
   const color = popup.accentColor
-
   const style = maximized
     ? { inset: 8 }
     : { left: pos.x, top: pos.y, width: size.w, height: minimized ? 'auto' : size.h }
 
   return (
     <div
-      className="absolute z-50 flex flex-col rounded-xl shadow-2xl shadow-black/60 border border-white/10 bg-[#0f1117] overflow-hidden select-none"
-      style={style}
+      className="absolute z-50 flex flex-col rounded-xl shadow-2xl shadow-black/40 overflow-hidden select-none"
+      style={{
+        ...style,
+        background: 'var(--panel-bg)',
+        border: '1px solid var(--panel-border-strong)',
+      }}
     >
       {/* Title bar */}
       <div
         className="flex items-center gap-2 px-3 py-2.5 cursor-move flex-shrink-0"
-        style={{ borderBottom: minimized ? 'none' : '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.03)' }}
+        style={{
+          borderBottom: minimized ? 'none' : '1px solid var(--panel-border)',
+          background: 'var(--panel-surface)',
+        }}
         onPointerDown={onTitlePointerDown}
         onPointerMove={onTitlePointerMove}
         onPointerUp={onTitlePointerUp}
       >
-        {/* Accent dot */}
-        <span className="w-2.5 h-2.5 rounded-full flex-shrink-0 ring-1 ring-white/20" style={{ background: color }} />
-
-        {/* Title */}
-        <span className="flex-1 text-white text-xs font-semibold truncate" title={popup.displayName}>
+        <span className="w-2.5 h-2.5 rounded-full flex-shrink-0 ring-1 ring-black/10" style={{ background: color }} />
+        <span className="flex-1 text-xs font-semibold truncate" style={{ color: 'var(--panel-text)' }} title={popup.displayName}>
           {popup.displayName}
         </span>
-
-        {/* Object ID chip */}
         {popup.properties['objectid'] != null && (
-          <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-white/8 text-gray-400 flex-shrink-0">
+          <span className="text-[9px] font-mono px-1.5 py-0.5 rounded flex-shrink-0" style={{ background: 'var(--panel-surface-2)', color: 'var(--panel-muted)' }}>
             #{String(popup.properties['objectid'])}
           </span>
         )}
-
-        {/* Window controls */}
         <div className="flex items-center gap-1 ml-1 flex-shrink-0" onPointerDown={(e) => e.stopPropagation()}>
           <WinBtn onClick={() => setMinimized((v) => !v)} title={minimized ? 'Restore' : 'Minimise'}>
             <Minus className="w-3 h-3" />
@@ -166,17 +167,12 @@ function WindowShell({
         </div>
       </div>
 
-      {/* Body */}
       {!minimized && (
-        <div
-          className="flex-1 flex flex-col overflow-hidden"
-          style={maximized ? { minHeight: 0 } : { height: size.h - 44 }}
-        >
+        <div className="flex-1 flex flex-col overflow-hidden" style={maximized ? { minHeight: 0 } : { height: size.h - 44 }}>
           {children}
         </div>
       )}
 
-      {/* Resize handle */}
       {!minimized && !maximized && (
         <div
           className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize"
@@ -184,7 +180,7 @@ function WindowShell({
           onPointerMove={onResizePointerMove}
           onPointerUp={onResizePointerUp}
         >
-          <svg viewBox="0 0 10 10" className="w-3 h-3 absolute bottom-1 right-1 text-white/20">
+          <svg viewBox="0 0 10 10" className="w-3 h-3 absolute bottom-1 right-1" style={{ color: 'var(--panel-border-strong)' }}>
             <path d="M9 1L1 9M5 1L1 5M9 5L5 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
           </svg>
         </div>
@@ -202,22 +198,20 @@ function WinBtn({ onClick, title, danger, children }: {
       title={title}
       className={cn(
         'w-5 h-5 flex items-center justify-center rounded transition-colors',
-        danger
-          ? 'text-gray-500 hover:text-red-400 hover:bg-red-500/15'
-          : 'text-gray-500 hover:text-white hover:bg-white/10',
+        danger ? 'hover:text-red-400 hover:bg-red-500/15' : 'hover:bg-black/10',
       )}
+      style={{ color: 'var(--panel-muted)' }}
     >
       {children}
     </button>
   )
 }
 
-// ─── Body (tabs + content) ────────────────────────────────────────────────────
+// ─── Body ─────────────────────────────────────────────────────────────────────
 
 const SKIP_GEOM = new Set([
   'the_geom', 'geom', 'shape', 'geometry', 'wkb_geometry', 'gdb_geomattr_data',
-  'shape_length', 'shape_area',
-  'ogc_fid',
+  'shape_length', 'shape_area', 'ogc_fid',
 ])
 
 interface BodyProps {
@@ -238,15 +232,12 @@ function WindowBody({ popup, tab, setTab, search, setSearch, height }: BodyProps
     enabled: numericId != null,
   })
 
-  const fullProps: Record<string, unknown> =
-    rows?.[0] ?? popup.properties
-
+  const fullProps: Record<string, unknown> = rows?.[0] ?? popup.properties
   const spec = popup.popupSpec as Record<string, string>
   const keyEntries: [string, string, unknown][] = Object.entries(spec)
     .map(([f, label]): [string, string, unknown] => [f, label, fullProps[f]])
     .filter(([, , v]) => v != null && v !== '')
 
-  // Split entries: condition/cv fields → own tab; rest → All tab
   const rawEntries: [string, unknown][] = Object.entries(fullProps)
     .filter(([k, v]) => !SKIP_GEOM.has(k) && v != null && v !== '')
 
@@ -270,52 +261,52 @@ function WindowBody({ popup, tab, setTab, search, setSearch, height }: BodyProps
   return (
     <>
       {/* Tabs */}
-      <div className="flex items-center gap-0 px-3 pt-2 flex-shrink-0 border-b border-white/6">
+      <div className="flex items-center gap-0 px-3 pt-2 flex-shrink-0" style={{ borderBottom: '1px solid var(--panel-border)' }}>
         {tabs.map(([t, label]) => (
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={cn(
-              'px-3 py-1.5 text-xs font-medium transition-colors border-b-2 -mb-px whitespace-nowrap',
-              tab === t
-                ? 'text-white border-current'
-                : 'text-gray-500 border-transparent hover:text-gray-300',
-            )}
-            style={tab === t ? { borderColor: color } : {}}
+            className="px-3 py-1.5 text-xs font-medium transition-colors border-b-2 -mb-px whitespace-nowrap"
+            style={{
+              color: tab === t ? 'var(--panel-text)' : 'var(--panel-muted)',
+              borderBottomColor: tab === t ? color : 'transparent',
+            }}
           >
             {label}
           </button>
         ))}
 
-        {/* Search box — only on All tab */}
         {tab === 'all' && (
           <div className="ml-auto flex items-center gap-1.5 mb-1">
-            <Search className="w-3 h-3 text-gray-500 flex-shrink-0" />
+            <Search className="w-3 h-3 flex-shrink-0" style={{ color: 'var(--panel-muted)' }} />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Filter…"
-              className="text-xs bg-white/6 border border-white/10 rounded px-2 py-0.5 text-white placeholder-gray-600 w-28 focus:outline-none focus:border-white/20"
+              className="text-xs rounded px-2 py-0.5 w-28 focus:outline-none focus:ring-1 focus:ring-brand-400"
+              style={{
+                background: 'var(--panel-input-bg)',
+                border: '1px solid var(--panel-input-border)',
+                color: 'var(--panel-input-text)',
+              }}
             />
           </div>
         )}
       </div>
 
-      {/* Loading skeleton */}
       {isLoading && (
         <div className="px-4 py-3 space-y-2">
           {[80, 60, 90, 50].map((w, i) => (
-            <div key={i} className="h-3 rounded bg-white/6 animate-pulse" style={{ width: `${w}%` }} />
+            <div key={i} className="h-3 rounded animate-pulse" style={{ width: `${w}%`, background: 'var(--panel-surface)' }} />
           ))}
         </div>
       )}
 
-      {/* Key Fields tab */}
       {!isLoading && tab === 'key' && (
-        <div className="flex-1 overflow-y-auto p-3">
+        <div className="flex-1 overflow-y-auto p-3" style={{ height }}>
           {keyEntries.length === 0 ? (
             <div className="text-center py-8">
-              <p className="text-gray-500 text-xs">No key fields configured for this layer.</p>
+              <p className="text-xs" style={{ color: 'var(--panel-muted)' }}>No key fields configured for this layer.</p>
               <button onClick={() => setTab('all')} className="mt-2 text-xs underline" style={{ color }}>
                 View all attributes
               </button>
@@ -328,12 +319,13 @@ function WindowBody({ popup, tab, setTab, search, setSearch, height }: BodyProps
                 return (
                   <div
                     key={field}
-                    className={cn('rounded-lg p-2.5 bg-white/[0.04] border border-white/8', wide && 'col-span-2')}
+                    className={cn('rounded-lg p-2.5', wide && 'col-span-2')}
+                    style={{ background: 'var(--panel-surface)', border: '1px solid var(--panel-border)' }}
                   >
                     <p className="text-[9px] uppercase tracking-widest font-semibold mb-1" style={{ color }}>
                       {label}
                     </p>
-                    <p className="text-white text-sm font-medium leading-snug break-words">{display}</p>
+                    <p className="text-sm font-medium leading-snug break-words" style={{ color: 'var(--panel-text)' }}>{display}</p>
                   </div>
                 )
               })}
@@ -342,36 +334,29 @@ function WindowBody({ popup, tab, setTab, search, setSearch, height }: BodyProps
         </div>
       )}
 
-      {/* All Attributes tab */}
-      {!isLoading && tab === 'all' && (
-        <AttributeTable rows={filtered} color={color} />
-      )}
-
-      {/* Condition / CV tab */}
-      {!isLoading && tab === 'cond' && (
-        <AttributeTable rows={condEntries} color={color} />
-      )}
+      {!isLoading && tab === 'all' && <AttributeTable rows={filtered} color={color} height={height} />}
+      {!isLoading && tab === 'cond' && <AttributeTable rows={condEntries} color={color} height={height} />}
     </>
   )
 }
 
-function AttributeTable({ rows, color }: { rows: [string, unknown][]; color: string }) {
+function AttributeTable({ rows, color, height }: { rows: [string, unknown][]; color: string; height?: number }) {
   if (rows.length === 0) {
-    return <p className="text-gray-500 text-xs text-center py-6">No attributes</p>
+    return <p className="text-xs text-center py-6" style={{ color: 'var(--panel-muted)' }}>No attributes</p>
   }
   return (
-    <div className="flex-1 overflow-hidden flex flex-col">
+    <div className="flex-1 overflow-hidden flex flex-col" style={{ height }}>
       <div className="overflow-y-auto flex-1">
         <table className="w-full text-xs border-collapse">
-          <thead className="sticky top-0 z-10 bg-[#0f1117]">
+          <thead className="sticky top-0 z-10" style={{ background: 'var(--panel-thead)' }}>
             <tr>
-              <th className="text-left px-4 py-2 text-gray-500 font-medium text-[10px] uppercase tracking-wider border-b border-white/6 w-2/5">
+              <th className="text-left px-4 py-2 font-medium text-[10px] uppercase tracking-wider w-2/5" style={{ color: 'var(--panel-muted)', borderBottom: '1px solid var(--panel-border)' }}>
                 Attribute
               </th>
-              <th className="text-left px-4 py-2 text-gray-500 font-medium text-[10px] uppercase tracking-wider border-b border-white/6">
+              <th className="text-left px-4 py-2 font-medium text-[10px] uppercase tracking-wider" style={{ color: 'var(--panel-muted)', borderBottom: '1px solid var(--panel-border)' }}>
                 Value
               </th>
-              <th className="w-8 border-b border-white/6" />
+              <th className="w-8" style={{ borderBottom: '1px solid var(--panel-border)' }} />
             </tr>
           </thead>
           <tbody>
@@ -400,16 +385,21 @@ function TableRow({ field, value, even, color }: {
   }
 
   return (
-    <tr className={cn('group hover:bg-white/[0.04] transition-colors', even ? 'bg-transparent' : 'bg-white/[0.02]')}>
+    <tr
+      className="group transition-colors"
+      style={{ background: even ? 'transparent' : 'var(--panel-row-stripe)' }}
+      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--panel-row-hover)' }}
+      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = even ? 'transparent' : 'var(--panel-row-stripe)' }}
+    >
       <td className="px-4 py-2 align-top">
         <span
           className={cn('font-medium capitalize', isSpec ? 'font-mono' : '')}
-          style={{ color: isSpec ? color : undefined }}
+          style={{ color: isSpec ? color : 'var(--panel-muted)' }}
         >
           {isSpec ? field : field.replace(/_/g, ' ')}
         </span>
       </td>
-      <td className="px-4 py-2 text-gray-300 break-all align-top">
+      <td className="px-4 py-2 break-all align-top" style={{ color: 'var(--panel-text)' }}>
         {display}
       </td>
       <td className="px-2 py-2 align-top">
@@ -419,8 +409,8 @@ function TableRow({ field, value, even, color }: {
           title="Copy"
         >
           {copied
-            ? <Check className="w-3 h-3 text-green-400" />
-            : <Copy className="w-3 h-3 text-gray-500 hover:text-white" />}
+            ? <Check className="w-3 h-3 text-green-500" />
+            : <Copy className="w-3 h-3" style={{ color: 'var(--panel-muted)' }} />}
         </button>
       </td>
     </tr>

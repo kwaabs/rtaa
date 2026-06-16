@@ -87,7 +87,7 @@ function addMarkerImages(map: maplibregl.Map) {
 
 export default function MapView() {
   const mapRef = useRef<MapRef>(null)
-  const { viewState, setViewState, setMapRef, activeBasemap, activeLayers, initFromConfig, setMousePos } =
+  const { viewState, setViewState, setMapRef, activeBasemap, activeLayers, initFromConfig, setMousePos, setHighlightedIds, clearHighlights } =
     useMapStore()
   const { setPopup, setPicker } = usePopupStore()
 
@@ -113,12 +113,12 @@ export default function MapView() {
 
   const handleMapClick = useCallback(
     (e: MapLayerMouseEvent) => {
-      if (!e.features?.length || !layers) return
+      if (!e.features?.length || !layers) { clearHighlights(); return }
 
       const lng = e.lngLat.lng
       const lat = e.lngLat.lat
 
-      // Deduplicate: one entry per layer (multiple tile features can come from same layer)
+      // Deduplicate: one entry per layer
       const seen = new Set<string>()
       const unique = e.features.filter((f) => {
         if (seen.has(f.layer.id)) return false
@@ -142,9 +142,20 @@ export default function MapView() {
           })
           .filter(Boolean) as import('@/stores/popupStore').PickerCandidate[]
 
+      /** Highlight the clicked feature by objectid if available */
+      const highlightFeature = (layerName: string, props: Record<string, unknown>) => {
+        const oid = props['objectid'] ?? props['OBJECTID']
+        if (oid != null) setHighlightedIds(layerName, [Number(oid)])
+        else clearHighlights()
+      }
+
+      clearHighlights()
+
       if (unique.length === 1) {
         const cfg = layers.find((l) => l.name === unique[0].layer.id) as LayerConfig | undefined
         if (!cfg) return
+        const props = (unique[0].properties ?? {}) as Record<string, unknown>
+        highlightFeature(cfg.name, props)
         setPopup({
           longitude: lng,
           latitude: lat,
@@ -152,20 +163,21 @@ export default function MapView() {
           displayName: cfg.display_name,
           layerType: cfg.layer_type,
           accentColor: extractAccentColor(cfg.paint_spec, cfg.layer_type),
-          properties: (unique[0].properties ?? {}) as Record<string, unknown>,
+          properties: props,
           popupSpec: cfg.popup_spec,
         })
       } else {
         const candidates = toCandidates()
         if (candidates.length === 1) {
           const c = candidates[0]
+          highlightFeature(c.layerName, c.properties)
           setPopup({ longitude: lng, latitude: lat, ...c })
         } else if (candidates.length > 1) {
           setPicker({ longitude: lng, latitude: lat, candidates })
         }
       }
     },
-    [layers, setPopup, setPicker],
+    [layers, setPopup, setPicker, setHighlightedIds, clearHighlights],
   )
 
   const rawStyleUrl =

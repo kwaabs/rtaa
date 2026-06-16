@@ -66,7 +66,7 @@ interface LineLengthResult {
 }
 
 export function SpatialToolbar() {
-  const { mapRef, setSpatialFilter, sidebarOpen } = useMapStore()
+  const { mapRef, setSpatialFilter, sidebarOpen, setHighlightedIds, clearHighlights } = useMapStore()
   const { setOpen: openQuery } = useQueryStore()
   const {
     activeTool, drawn, measureInfo, bufferRadius,
@@ -131,8 +131,13 @@ export function SpatialToolbar() {
             lengthM: lengthKm * 1000,
             layerId: lineFeature.layer.id,
           })
+          // Highlight the clicked line feature
+          const oid = lineFeature.properties?.['objectid'] ?? lineFeature.properties?.['OBJECTID']
+          if (oid != null) setHighlightedIds(lineFeature.layer.id, [Number(oid)])
+          else clearHighlights()
         } else {
           setLineLengthResult(null)
+          clearHighlights()
         }
         return
       }
@@ -365,7 +370,7 @@ export function SpatialToolbar() {
               <RouteIcon size={14} className="text-green-500" />
               Line Length
             </div>
-            <button onClick={() => setLineLengthResult(null)} className="text-gray-400 hover:text-gray-600">
+            <button onClick={() => { setLineLengthResult(null); clearHighlights() }} className="text-gray-400 hover:text-gray-600">
               <X size={13} />
             </button>
           </div>
