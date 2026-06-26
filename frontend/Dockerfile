@@ -3,8 +3,7 @@ FROM node:22-alpine AS builder
 WORKDIR /app
 # Cache npm install layer separately
 COPY package.json package-lock.json* ./
-RUN --mount=type=cache,target=/root/.npm \
-    npm ci
+RUN npm ci --verbose
 # Copy source and build
 COPY . .
 # Build-time env vars — override at build with --build-arg
