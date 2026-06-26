@@ -8,10 +8,6 @@
 #   9836 - Martin vector tile server
 #   9837 - (reserved for Goose one-shot runner)
 #   9838 - DWG converter (LibreDWG sidecar)
-#
-# Usage:
-#   Dev:  docker compose up -d
-#   Prod: docker compose --profile prod up -d
 
 services:
   db:
@@ -63,7 +59,6 @@ services:
       GOTRUE_EXTERNAL_EMAIL_ENABLED: ${ENABLE_EMAIL_SIGNUP:-true}
       GOTRUE_MAILER_AUTOCONFIRM: ${ENABLE_EMAIL_AUTOCONFIRM:-true}
       GOTRUE_LOG_LEVEL: ${LOG_LEVEL:-info}
-      # OAuth providers — set credentials in .env then run: make infra-up
       GOTRUE_EXTERNAL_GOOGLE_ENABLED: ${GOTRUE_EXTERNAL_GOOGLE_ENABLED:-false}
       GOTRUE_EXTERNAL_GOOGLE_CLIENT_ID: ${GOTRUE_EXTERNAL_GOOGLE_CLIENT_ID:-}
       GOTRUE_EXTERNAL_GOOGLE_SECRET: ${GOTRUE_EXTERNAL_GOOGLE_SECRET:-}
@@ -159,10 +154,9 @@ services:
       ENV: production
     ports:
       - "9833:9833"
-    profiles:
-      - prod
     networks:
       - rtaa_net
+      - coolify
 
   web:
     build:
@@ -180,32 +174,15 @@ services:
     ports:
       - "80:80"
       - "443:443"
-    profiles:
-      - prod
     networks:
       - rtaa_net
-
-  migrate:
-    image: gomicro/goose:latest
-    container_name: rtaa_migrate
-    depends_on:
-      db:
-        condition: service_healthy
-    environment:
-      GOOSE_DRIVER: postgres
-      GOOSE_DBSTRING: "host=db port=5432 user=supabase_admin password=${POSTGRES_PASSWORD:-postgres} dbname=${POSTGRES_DB:-rtaa} sslmode=disable"
-      GOOSE_MIGRATION_DIR: /migrations
-    volumes:
-      - ./backend/migrations:/migrations
-    command: ["goose", "up"]
-    profiles:
-      - migrate
-    networks:
-      - rtaa_net
+      - coolify
 
 networks:
   rtaa_net:
     driver: bridge
+  coolify:
+    external: true
 
 volumes:
   db_data:
