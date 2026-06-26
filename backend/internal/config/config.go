@@ -10,22 +10,18 @@ import (
 
 type Config struct {
 	// Server
-	Port int
-
+	Port              int
+	CORSAllowedOrigin string
 	// Database
 	DatabaseURL string
-
 	// GoTrue
-	GoTrueURL    string
-	JWTSecret    string
-
+	GoTrueURL string
+	JWTSecret string
 	// Valkey / Redis
 	ValkeyURL      string
 	ValkeyPassword string
-
 	// DWG converter sidecar
 	DWGConverterURL string
-
 	// App
 	Env      string
 	LogLevel string
@@ -42,17 +38,17 @@ func Load() (*Config, error) {
 	}
 
 	cfg := &Config{
-		Port:           port,
-		DatabaseURL:    requireEnv("DATABASE_URL"),
-		GoTrueURL:      requireEnv("GOTRUE_URL"),
-		JWTSecret:      requireEnv("JWT_SECRET"),
-		ValkeyURL:      getEnv("VALKEY_URL", "redis://localhost:9832/0"),
-		ValkeyPassword: getEnv("VALKEY_PASSWORD", ""),
-		DWGConverterURL: getEnv("DWG_CONVERTER_URL", "http://localhost:9838"),
-		Env:             getEnv("APP_ENV", "development"),
-		LogLevel:        getEnv("LOG_LEVEL", "info"),
+		Port:              port,
+		CORSAllowedOrigin: getEnv("CORS_ALLOWED_ORIGIN", "http://localhost:9834"),
+		DatabaseURL:       requireEnv("DATABASE_URL"),
+		GoTrueURL:         requireEnv("GOTRUE_URL"),
+		JWTSecret:         requireEnv("JWT_SECRET"),
+		ValkeyURL:         getEnv("VALKEY_URL", "redis://localhost:9832/0"),
+		ValkeyPassword:    getEnv("VALKEY_PASSWORD", ""),
+		DWGConverterURL:   getEnv("DWG_CONVERTER_URL", "http://localhost:9838"),
+		Env:               getEnv("APP_ENV", "development"),
+		LogLevel:          getEnv("LOG_LEVEL", "info"),
 	}
-
 	return cfg, nil
 }
 
