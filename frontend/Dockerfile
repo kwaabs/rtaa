@@ -1,9 +1,11 @@
 # ── Stage 1: build ────────────────────────────────────────────────────────────
 FROM node:22-alpine AS builder
 WORKDIR /app
+# Copy scripts first — needed by postinstall hook
+COPY scripts/ ./scripts/
 # Cache npm install layer separately
 COPY package.json package-lock.json* ./
-RUN npm ci --verbose
+RUN npm ci
 # Copy source and build
 COPY . .
 # Build-time env vars — override at build with --build-arg
@@ -18,11 +20,8 @@ ENV VITE_MARTIN_URL=$VITE_MARTIN_URL
 RUN npm run build
 # ── Stage 2: serve with nginx ─────────────────────────────────────────────────
 FROM nginx:1.27-alpine
-# Remove default nginx config
 RUN rm /etc/nginx/conf.d/default.conf
-# Custom nginx config — SPA routing + gzip + security headers
 COPY nginx.conf /etc/nginx/conf.d/app.conf
-# Copy built assets
 COPY --from=builder /app/dist /usr/share/nginx/html
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
