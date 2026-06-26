@@ -1,0 +1,212 @@
+# Port allocation (9830-9850):
+#   9830 - PostgreSQL / Supabase PostGIS
+#   9831 - GoTrue auth
+#   9832 - Valkey (Redis-compatible cache)
+#   9833 - Backend API (Go Chi)
+#   9834 - Frontend dev server (Vite)
+#   9835 - (reserved)
+#   9836 - Martin vector tile server
+#   9837 - (reserved for Goose one-shot runner)
+#   9838 - DWG converter (LibreDWG sidecar)
+#
+# Usage:
+#   Dev:  docker compose up -d
+#   Prod: docker compose --profile prod up -d
+
+services:
+  db:
+    image: supabase/postgres:15.14.1.095
+    container_name: rtaa_db
+    restart: unless-stopped
+    ports:
+      - "9830:5432"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-rtaa}
+      POSTGRES_USER: supabase_admin
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./backend/sql/00_extensions.sql:/docker-entrypoint-initdb.d/00_extensions.sql
+      - ./backend/sql/01_schemas.sql:/docker-entrypoint-initdb.d/01_schemas.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U supabase_admin -d ${POSTGRES_DB:-rtaa}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - rtaa_net
+
+  gotrue:
+    image: supabase/gotrue:v2.158.1
+    container_name: rtaa_gotrue
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "9831:9999"
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: 9999
+      API_EXTERNAL_URL: ${API_EXTERNAL_URL:-http://localhost:9831}
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://supabase_admin:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-rtaa}?search_path=auth
+      GOTRUE_SITE_URL: ${SITE_URL:-http://localhost:9834}
+      GOTRUE_URI_ALLOW_LIST: ${ADDITIONAL_REDIRECT_URLS:-http://localhost:9834}
+      GOTRUE_DISABLE_SIGNUP: ${DISABLE_SIGNUP:-false}
+      GOTRUE_JWT_ADMIN_ROLES: service_role
+      GOTRUE_JWT_AUD: authenticated
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_JWT_EXP: ${JWT_EXPIRY:-3600}
+      GOTRUE_JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-token-with-at-least-32-characters-long}
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: ${ENABLE_EMAIL_SIGNUP:-true}
+      GOTRUE_MAILER_AUTOCONFIRM: ${ENABLE_EMAIL_AUTOCONFIRM:-true}
+      GOTRUE_LOG_LEVEL: ${LOG_LEVEL:-info}
+      # OAuth providers — set credentials in .env then run: make infra-up
+      GOTRUE_EXTERNAL_GOOGLE_ENABLED: ${GOTRUE_EXTERNAL_GOOGLE_ENABLED:-false}
+      GOTRUE_EXTERNAL_GOOGLE_CLIENT_ID: ${GOTRUE_EXTERNAL_GOOGLE_CLIENT_ID:-}
+      GOTRUE_EXTERNAL_GOOGLE_SECRET: ${GOTRUE_EXTERNAL_GOOGLE_SECRET:-}
+      GOTRUE_EXTERNAL_GOOGLE_REDIRECT_URI: ${GOTRUE_EXTERNAL_GOOGLE_REDIRECT_URI:-}
+      GOTRUE_EXTERNAL_AZURE_ENABLED: ${GOTRUE_EXTERNAL_AZURE_ENABLED:-false}
+      GOTRUE_EXTERNAL_AZURE_CLIENT_ID: ${GOTRUE_EXTERNAL_AZURE_CLIENT_ID:-}
+      GOTRUE_EXTERNAL_AZURE_SECRET: ${GOTRUE_EXTERNAL_AZURE_SECRET:-}
+      GOTRUE_EXTERNAL_AZURE_URL: ${GOTRUE_EXTERNAL_AZURE_URL:-https://login.microsoftonline.com/common}
+      GOTRUE_EXTERNAL_GITHUB_ENABLED: ${GOTRUE_EXTERNAL_GITHUB_ENABLED:-false}
+      GOTRUE_EXTERNAL_GITHUB_CLIENT_ID: ${GOTRUE_EXTERNAL_GITHUB_CLIENT_ID:-}
+      GOTRUE_EXTERNAL_GITHUB_SECRET: ${GOTRUE_EXTERNAL_GITHUB_SECRET:-}
+    networks:
+      - rtaa_net
+
+  valkey:
+    image: valkey/valkey:8-alpine
+    container_name: rtaa_valkey
+    restart: unless-stopped
+    ports:
+      - "9832:6379"
+    command: >
+      valkey-server
+        --requirepass ${VALKEY_PASSWORD:-valkeypassword}
+        --maxmemory 256mb
+        --maxmemory-policy allkeys-lru
+        --save 60 1
+    volumes:
+      - valkey_data:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "-a", "${VALKEY_PASSWORD:-valkeypassword}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - rtaa_net
+
+  martin:
+    image: ghcr.io/maplibre/martin:latest
+    container_name: rtaa_martin
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "9836:3000"
+    environment:
+      DATABASE_URL: postgres://supabase_admin:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-rtaa}
+    volumes:
+      - ./backend/martin-config.yml:/config.yml
+    command: ["--config", "/config.yml"]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks:
+      - rtaa_net
+
+  dwg-converter:
+    build:
+      context: ./dwg-converter
+      dockerfile: Dockerfile
+    container_name: rtaa_dwg_converter
+    restart: unless-stopped
+    ports:
+      - "9838:9838"
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:9838/health')\""]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    networks:
+      - rtaa_net
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: rtaa_api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      gotrue:
+        condition: service_started
+      valkey:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://supabase_admin:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-rtaa}?search_path=public,dbo&sslmode=disable
+      GOTRUE_URL: http://gotrue:9999
+      VALKEY_URL: redis://:${VALKEY_PASSWORD:-valkeypassword}@valkey:6379/0
+      BACKEND_PORT: 9833
+      ENV: production
+    ports:
+      - "9833:9833"
+    profiles:
+      - prod
+    networks:
+      - rtaa_net
+
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ""
+        VITE_GOTRUE_URL: ""
+        VITE_GOTRUE_ANON_KEY: ${VITE_GOTRUE_ANON_KEY:-}
+        VITE_MARTIN_URL: /martin
+    container_name: rtaa_web
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "80:80"
+      - "443:443"
+    profiles:
+      - prod
+    networks:
+      - rtaa_net
+
+  migrate:
+    image: gomicro/goose:latest
+    container_name: rtaa_migrate
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      GOOSE_DRIVER: postgres
+      GOOSE_DBSTRING: "host=db port=5432 user=supabase_admin password=${POSTGRES_PASSWORD:-postgres} dbname=${POSTGRES_DB:-rtaa} sslmode=disable"
+      GOOSE_MIGRATION_DIR: /migrations
+    volumes:
+      - ./backend/migrations:/migrations
+    command: ["goose", "up"]
+    profiles:
+      - migrate
+    networks:
+      - rtaa_net
+
+networks:
+  rtaa_net:
+    driver: bridge
+
+volumes:
+  db_data:
+  valkey_data:
