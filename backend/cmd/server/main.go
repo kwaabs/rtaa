@@ -60,8 +60,8 @@ func main() {
 	authMw := auth.NewMiddleware(cfg.GoTrueURL, logger)
 
 	// ── Handlers ─────────────────────────────────────────────────────────────
-	healthH := handlers.NewHealthHandler(bunDB, logger)
-	metaH := handlers.NewMetaHandler(bunDB, cacheClient, logger)
+	healthH   := handlers.NewHealthHandler(bunDB, logger)
+	metaH     := handlers.NewMetaHandler(bunDB, cacheClient, logger)
 	featuresH := handlers.NewFeaturesHandler(bunDB, cacheClient, logger)
 	attrsH    := handlers.NewAttrsHandler(bunDB, cacheClient, logger)
 	fieldsH   := handlers.NewFieldsHandler(bunDB, cacheClient, logger)
@@ -77,6 +77,7 @@ func main() {
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Compress(5))
+
 	// Per-request timeout — skip for CAD upload/convert which can take minutes
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -89,7 +90,7 @@ func main() {
 	})
 
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:9834", "http://localhost:5173"},
+		AllowedOrigins:   []string{cfg.CORSAllowedOrigin},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-Request-Id"},
 		ExposedHeaders:   []string{"Link"},
@@ -101,18 +102,15 @@ func main() {
 	r.Use(httprate.LimitByIP(200, time.Minute))
 
 	// ── Routes ────────────────────────────────────────────────────────────────
-	// Health (public)
 	r.Get("/healthz/live", healthH.Live)
 	r.Get("/healthz/ready", healthH.Ready)
 
 	r.Route("/api/v1", func(r chi.Router) {
-		// Public metadata (layer list, basemaps, app config, enabled auth providers)
 		r.Get("/meta/layers", metaH.Layers)
 		r.Get("/meta/basemaps", metaH.Basemaps)
 		r.Get("/meta/config", metaH.AppConfig)
 		r.Get("/meta/auth-providers", metaH.AuthProviders)
 
-		// Protected routes — require valid GoTrue JWT
 		r.Group(func(r chi.Router) {
 			r.Use(authMw.Require)
 
@@ -124,7 +122,6 @@ func main() {
 			r.Get("/layers/{layerName}/fields", fieldsH.ByLayer)
 			r.Post("/layers/{layerName}/query", queryH.ByLayer)
 
-			// Admin-only routes
 			r.Group(func(r chi.Router) {
 				r.Use(auth.RequireAdmin)
 				r.Get("/admin/layers", adminH.ListLayers)
@@ -141,10 +138,9 @@ func main() {
 
 	// ── Server ────────────────────────────────────────────────────────────────
 	srv := &http.Server{
-		Addr: fmt.Sprintf(":%d", cfg.Port),
+		Addr:    fmt.Sprintf(":%d", cfg.Port),
 		Handler: r,
 		// CAD uploads can be large and conversions slow — use generous timeouts.
-		// Specific routes that need a tighter bound use middleware.Timeout instead.
 		ReadTimeout:  10 * time.Minute,
 		WriteTimeout: 10 * time.Minute,
 		IdleTimeout:  120 * time.Second,
